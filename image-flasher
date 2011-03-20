@@ -1,0 +1,74 @@
+#!/bin/bash
+#
+# Flash [compressed] binary image (created by dd) to block device
+#
+TARGET_DEVICE_REGEX="^\/dev\/([a-z]{3}|mmcblk[0-9])$"
+START_TIMEOUT=5
+
+function suicide() {
+  echo "[ ERROR ]"
+  echo -e "${@}"
+  exit 1
+}
+
+function show_usage() {
+  echo "Usage:   image-flasher <image_file> <target_device>"
+  echo "Example: image-flasher vc62-4gb.dd.gz /dev/sdb"
+  if [ ${1} -eq 0 ] || [ ${1} -eq 1 ]; then
+    exit ${1}
+  fi
+}
+
+if [ ${#} -ne 2 ]; then
+  show_usage 1
+fi
+
+IMAGE_FILE="${1}"
+TARGET_DEVICE="${2}"
+
+if [ ! -f "${IMAGE_FILE}" ]; then
+  suicide "File does not exist: ${IMAGE_FILE}"
+fi
+
+if [ $(echo "${TARGET_DEVICE}" | egrep "${TARGET_DEVICE_REGEX}" | wc -l) -ne 1 ]; then
+  suicide "Not sane target device name: ${TARGET_DEVICE} (Must match regex /${TARGET_DEVICE_REGEX}/)"
+fi
+
+if [ ! -e "${TARGET_DEVICE}" ]; then
+  suicide "Device does not exist: ${TARGET_DEVICE}"
+  if [ ! -b "${TARGET_DEVICE}" ]; then
+    suicide "Not a valid block device: ${TARGET_DEVICE}"
+  fi
+fi
+
+MOUNT_POINTS="$(mount | egrep "^${TARGET_DEVICE}" | awk '{print $1}')"
+for MOUNT_POINT in ${MOUNT_POINTS}; do
+  echo "* Unmounting ${MOUNT_POINT}"
+  umount "${MOUNT_POINT}"
+done
+
+if [ $(mount | egrep "^${TARGET_DEVICE}" | wc -l) -ne 1 ]; then
+  suicide "Device is mounted: ${TARGET_DEVICE}"
+fi
+
+IMAGE_FILE_EXT="$(echo "${IMAGE_FILE}" | awk -F"." '{print $NF}')"
+FLASHER="cat"
+if [ "${IMAGE_FILE_EXT}" == "gz" ]; then
+  FLASHER="zcat"
+fi
+if [ "${IMAGE_FILE_EXT}" == "bz2" ]; then
+  FLASHER="bzcat"
+fi
+
+echo "* Will start flash ${IMAGE_FILE} to ${TARGET_DEVICE} in ${START_TIMEOUT} seconds..."
+sleep ${START_TIMEOUT}
+echo "* Starting flash write!"
+${FLASHER} "${IMAGE_FILE}" "${TARGET_DEVICE}"
+if [ ${?} -eq 0 ]; then
+  echo "[ OK ]"
+else
+  echo "[ WARNING ]" 
+  echo "Flash process exited with error!"
+  echo "NB! It may be either critical or not, however it's up to you what decision to take."
+  echo "NB! Be sure to examine previous output lines and see what caused this warning."
+fi
