@@ -31,7 +31,7 @@ if [ ! -f "${IMAGE_FILE}" ]; then
 fi
 
 if [ $(echo "${TARGET_DEVICE}" | egrep "${TARGET_DEVICE_REGEX}" | wc -l) -ne 1 ]; then
-  suicide "Not sane target device name: ${TARGET_DEVICE} (Must match regex /${TARGET_DEVICE_REGEX}/)"
+  suicide "Not sane target device name: ${TARGET_DEVICE} (Must match regex: /${TARGET_DEVICE_REGEX}/)"
 fi
 
 if [ ! -e "${TARGET_DEVICE}" ]; then
