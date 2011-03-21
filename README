@@ -1,1 +1,3 @@
 Flash [compressed] binary image (created by dd) to block device.
+It is a wrapper to cat/zcat/bzcat utilities, which has foolprotect
+and will not allow to kill your PCs HDD by typing wrong block device name.
